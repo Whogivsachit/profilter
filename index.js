@@ -1,24 +1,17 @@
 const express = require('express');
-const dotenv = require('dotenv');
-const bodyParser = require('body-parser');
 const fs = require('fs');
 const path = require('path');
 const csv = require('csv-parser');
-dotenv.config();
 
 const app = express();
-app.set('view engine', 'ejs');
-app.use(express.static('public'));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-
-let profanityList = [];
+app.use(express.json());
 
 // Load profanity List from csv
+let profanitySet = new Set();
 (async () => {
     try {
         const filepath = path.join(__dirname, 'profanityList.csv');
-        profanityList = await new Promise((resolve, reject) => {
+        const list = await new Promise((resolve, reject) => {
             const list = [];
             fs.createReadStream(filepath)
                 .pipe(csv())
@@ -26,27 +19,28 @@ let profanityList = [];
                 .on('end', () => resolve(list))
                 .on('error', reject);
         });
+        profanitySet = new Set(list);
         console.log('Profanity list loaded');
     } catch (error) {
         console.error('Error loading profanity list:', error);
     }
 })();
 
+app.get('/', (req, res) => {
+    res.status(200).json({ message: 'Send a POST request to / with the message you want to filter/check' });
+});
 
-// Routes
-app.get('/', (req, res) => { res.render('index'); });
-
-app.post('/filter', async (req, res) => {
-    const { string } = req.body;
+app.post('/', async (req, res) => {
+    const string = req.body.message;
     if (!string) return res.status(400).json({ error: 'No string provided' });
     
-    const wordsArray = string.split(/\W+/);
-    const triggeredWords = wordsArray.filter(word => profanityList.includes(word.toLowerCase()));
+    const wordsArray = string.toLowerCase().split(/\W+/);
+    const triggeredWords = wordsArray.filter(word => profanitySet.has(word));
     const containsProfanity = triggeredWords.length > 0;
     
-    const filteredString = wordsArray.map(word => 
-        profanityList.includes(word.toLowerCase()) ? '*'.repeat(word.length) : word
-    ).join(' ');
+    const filteredString = string.replace(/\w+/g, word =>
+        profanitySet.has(word.toLowerCase()) ? '*'.repeat(word.length) : word
+    );
     
     return res.status(200).json({
         containsProfanity,
@@ -56,4 +50,4 @@ app.post('/filter', async (req, res) => {
     });
 });
 
-app.listen(process.env.PORT, () => console.log(`it's alive on http://${process.env.HOST}:${process.env.PORT}`));
+app.listen(3000, () => console.log(`it's alive on http://localhost:3000`));
