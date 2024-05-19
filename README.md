@@ -24,6 +24,17 @@ Here are a few examples of how you can use Profilter in your applications:
       body: JSON.stringify({ message })
     });
   ```
+  Example Response: 
+  ```json
+  {
+    "containsProfanity": true,
+    "unfilteredString": "this message contains curse words it will be flagged shit",
+    "filteredString": "this message contains curse words it will be flagged ****",
+    "triggeredWords": [
+      "shit"
+    ]
+  }
+  ```
 
 - To customize the word blacklist, simply add or remove words from the `profanityList.csv` file.
 
